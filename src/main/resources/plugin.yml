@@ -1,0 +1,10 @@
+name: ConsoleOptimizer
+main: com.github.ringwid.consoleoptimizer.ConsoleOptimizer
+version: 1.1
+author: Ringwid
+commands:
+  consoleoptimizer:
+    description: ConsoleOptimizer main command.
+    usage: /consoleoptimizer <subcommand> [arguments]
+    permission: consoleoptimizer.command
+    permission-message: You don't have <permission>

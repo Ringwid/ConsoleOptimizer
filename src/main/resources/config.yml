@@ -1,0 +1,8 @@
+# Do ConsoleOptimizer intercept error stack traces?
+interceptErrors: true
+
+# Intercepted plugin list
+interceptPluginList:
+
+# Do ConsoleOptimizer notify you when a error generates?
+notify: true
