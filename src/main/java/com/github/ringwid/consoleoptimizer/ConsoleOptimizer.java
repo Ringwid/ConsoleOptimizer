@@ -39,7 +39,7 @@ public class ConsoleOptimizer extends JavaPlugin implements Listener {
         if (args.length < 1) {
             return false;
         }
-        String subCommand = args[0];
+        String subCommand = args[0].toLowerCase();
         switch (subCommand) {
             case "help":
                 sender.sendMessage(ChatColor.LIGHT_PURPLE + "------------ " + ChatColor.YELLOW + "ConsoleOptimizer Command List: " + ChatColor.LIGHT_PURPLE + "------------");
@@ -175,11 +175,10 @@ public class ConsoleOptimizer extends JavaPlugin implements Listener {
             Field field1 = bufferedWriter.getClass().getDeclaredField("out");
             field1.setAccessible(true);
 
-            if (b && !(errStreamBackup == null)) {
-                return;
-            }
-
             if (b) {
+                if (errStreamBackup != null) {
+                    return;
+                }
                 errStreamBackup = (Writer) field1.get(bufferedWriter);
                 field1.set(bufferedWriter, new ErrorOutputFilter(this, errStreamBackup));
             } else {
