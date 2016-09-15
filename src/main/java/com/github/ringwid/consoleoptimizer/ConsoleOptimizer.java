@@ -139,12 +139,7 @@ public class ConsoleOptimizer extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onCommandExecute(ServerCommandEvent event) {
         if (event.getCommand().startsWith("co") && event.getSender() instanceof ConsoleCommandSender) {
-            event.setCancelled(true);
-            String[] cmd = event.getCommand().split(" ");
-            String[] args = cmd.length > 0 ? Arrays.copyOfRange(cmd, 1, cmd.length) : new String[0];
-            if (!onCommand(event.getSender(), getCommand("consoleoptimizer"), cmd[0], args)) {
-                System.out.println(getCommand("consoleoptimizer").getUsage());
-            }
+            event.setCommand(event.getCommand().replaceFirst("co", "consoleoptimizer"));
         }
     }
 
