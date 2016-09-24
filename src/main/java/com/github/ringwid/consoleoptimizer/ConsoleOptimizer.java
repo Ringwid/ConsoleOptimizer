@@ -193,7 +193,7 @@ public class ConsoleOptimizer extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
-        getColoredLogger().sendMessage(PREFIX + "Disabling ConsoleOptimizer...");
+        getColoredLogger().sendMessage(PREFIX + "Disabling ConsoleOptimizer 1.1.2...");
         if (getConfig().getBoolean("interceptErrors") || errStreamBackup != null) {
             interceptErrors(false);
         }
