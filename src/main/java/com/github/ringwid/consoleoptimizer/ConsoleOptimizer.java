@@ -88,7 +88,7 @@ public class ConsoleOptimizer extends JavaPlugin implements Listener {
                             }
                         }
                         if (!match) {
-                            sender.sendMessage(PREFIX + "The plugin you have entered doesn't exists!");
+                            sender.sendMessage(PREFIX + "The plugin you have entered doesn't exist!");
                             break;
                         }
 
