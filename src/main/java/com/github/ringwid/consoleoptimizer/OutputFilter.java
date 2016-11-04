@@ -24,7 +24,7 @@ public class OutputFilter extends Writer {
         StackTraceElement[] elements = Thread.currentThread().getStackTrace();
         boolean match = false;
 
-        loop:
+        plugin:
         for (StackTraceElement element : elements) {
             for (String interceptPlugin : plugin.getConfig().getStringList("interceptPluginList")) {
                 if (element.getClassName().contains("consoleoptimizer")) {
@@ -40,10 +40,32 @@ public class OutputFilter extends Writer {
                     }
                     this.plugin.getPluginLog().get(interceptPlugin).add(str);
                     match = true;
-                    break loop;
+                    break plugin;
                 }
             }
         }
+
+        for (String interceptKeyword : plugin.getConfig().getStringList("interceptKeywordList")) {
+            if (str.toLowerCase().contains(interceptKeyword.toLowerCase())) {
+                for (Plugin plugin1 : plugin.getServer().getPluginManager().getPlugins()) {
+                    plugin:
+                    for (StackTraceElement element : elements) {
+                        if (element.getClassName().contains("consoleoptimizer")) {
+                            continue;
+                        }
+                        if (element.getClassName().contains(plugin1.getClass().getPackage().getName())) {
+                            if (!this.plugin.getPluginLog().containsKey(plugin1.getName())) {
+                                this.plugin.getPluginLog().put(plugin1.getName(), new ArrayList<>());
+                            }
+                            this.plugin.getPluginLog().get(plugin1.getName()).add(str);
+                            match = true;
+                            break plugin;
+                        }
+                    }
+                }
+            }
+        }
+
         if (!match) {
             print(str);
         }

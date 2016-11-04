@@ -4,5 +4,8 @@ interceptErrors: true
 # Intercepted plugin list
 interceptPluginList:
 
+# Intercepted keyword list
+interceptKeywordList:
+
 # Do ConsoleOptimizer notify you when a error generates?
 notify: true

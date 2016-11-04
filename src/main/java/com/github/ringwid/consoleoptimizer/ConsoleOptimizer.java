@@ -15,7 +15,10 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.BufferedWriter;
 import java.io.Writer;
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Project ConsoleOptimizer
@@ -44,8 +47,10 @@ public class ConsoleOptimizer extends JavaPlugin implements Listener {
             case "help":
                 sender.sendMessage(ChatColor.LIGHT_PURPLE + "------------ " + ChatColor.YELLOW + "ConsoleOptimizer Command List: " + ChatColor.LIGHT_PURPLE + "------------");
                 sender.sendMessage(ChatColor.AQUA + "- help:" + ChatColor.GRAY + ChatColor.ITALIC + " Show the help page");
-                sender.sendMessage(ChatColor.AQUA + "- filter add <plugin>:" + ChatColor.GRAY + ChatColor.ITALIC + " Add a filter of the specified plugin");
-                sender.sendMessage(ChatColor.AQUA + "- filter remove <plugin>:" + ChatColor.GRAY + ChatColor.ITALIC + " Remove the filter of the specified plugin");
+                sender.sendMessage(ChatColor.AQUA + "- filter add plugin <plugin>:" + ChatColor.GRAY + ChatColor.ITALIC + " Add a filter of the specified plugin");
+                sender.sendMessage(ChatColor.AQUA + "- filter remove plugin <plugin>:" + ChatColor.GRAY + ChatColor.ITALIC + " Remove the filter of the specified plugin");
+                sender.sendMessage(ChatColor.AQUA + "- filter add keyword <keyword>:" + ChatColor.GRAY + ChatColor.ITALIC + " Filter all messages contains the keyword.");
+                sender.sendMessage(ChatColor.AQUA + "- filter remove keyword <keyword>:" + ChatColor.GRAY + ChatColor.ITALIC + " Remove the filter of the specified keyword.");
                 sender.sendMessage(ChatColor.AQUA + "- filter add errors:" + ChatColor.GRAY + ChatColor.ITALIC + " Add the error filter");
                 sender.sendMessage(ChatColor.AQUA + "- filter remove errors:" + ChatColor.GRAY + ChatColor.ITALIC + " Remove the error filter");
                 sender.sendMessage(ChatColor.AQUA + "- showlog <plugin>:" + ChatColor.GRAY + ChatColor.ITALIC + " Show all the messages intercepted by ConsoleOptimizer");
@@ -53,20 +58,29 @@ public class ConsoleOptimizer extends JavaPlugin implements Listener {
                 break;
             case "filter":
                 if (args.length < 3) {
-                    sender.sendMessage("Usage: /co filter add <pluginName/errors>");
+                    sender.sendMessage("Usage: /co filter <Add/Remove> <Keyword/Plugin Name/Errors> [Name]");
                     break;
                 }
 
-                String action = args[1];
-                String pluginName = args[2];
-                if (!(action.equals("add") || action.equals("remove"))) {
-                    sender.sendMessage("Usage: /co filter add <pluginName/errors>");
+                String action = args[1].toLowerCase();
+                String actionType = args[2].toLowerCase();
+
+                if (!(action.equals("add") || action.equals("remove")) || (!actionType.equals("error") && args.length < 4)) {
+                    sender.sendMessage("Usage: /co filter <Add/Remove> <Keyword/Plugin Name/Errors> [Name]");
                 }
-                if (pluginName.equals("ConsoleOptimizer")) {
-                    sender.sendMessage(PREFIX + "Nope!");
-                    break;
-                } else {
-                    if (!pluginName.equals("errors")) {
+                
+                switch (actionType) {
+                    case "errors":
+                        config.set("interceptErrors", action.equals("add"));
+                        if (action.equals("add")) {
+                            interceptErrors(true);
+                        } else {
+                            interceptErrors(false);
+                        }
+                        sender.sendMessage(PREFIX + "Succeed.");
+                        break;
+                    case "plugin":
+                        String pluginName = args[3];
                         boolean match = false;
                         for (Plugin plugin : getServer().getPluginManager().getPlugins()) {
                             if (plugin.getName().equals(pluginName)) {
@@ -81,44 +95,113 @@ public class ConsoleOptimizer extends JavaPlugin implements Listener {
                         List<String> list = config.getStringList("interceptPluginList");
                         if (action.equals("add")) {
                             if (list.contains(pluginName)) {
-                                sender.sendMessage(PREFIX + "The plugin's message is already intercepted.");
+                                sender.sendMessage(PREFIX + "The plugin's output is already intercepted.");
                             } else {
                                 list.add(pluginName);
                                 sender.sendMessage(PREFIX + "Succeed.");
                             }
                         } else {
                             if (!list.contains(pluginName)) {
-                                sender.sendMessage(PREFIX + "The plugin's message isn't intercepted.");
+                                sender.sendMessage(PREFIX + "The plugin's output isn't intercepted.");
                             } else {
                                 list.remove(pluginName);
                                 sender.sendMessage(PREFIX + "Succeed.");
                             }
                         }
                         config.set("interceptPluginList", list);
-                    } else {
-                        config.set("interceptErrors", action.equals("add"));
-                        if (action.equals("add")) {
-                            interceptErrors(true);
-                        } else {
-                            interceptErrors(false);
+                        break;
+                    case "keyword":
+                        String keyword = args[3];
+                        match = false;
+                        for (Plugin plugin : getServer().getPluginManager().getPlugins()) {
+                            if (plugin.getName().equals(keyword)) {
+                                match = true;
+                            }
                         }
-                        sender.sendMessage(PREFIX + "Succeed.");
-                    }
+                        if (!match) {
+                            sender.sendMessage(PREFIX + "The plugin you have entered doesn't exists!");
+                            break;
+                        }
 
-                    saveConfig();
+                        list = config.getStringList("interceptKeywordList");
+                        if (action.equals("add")) {
+                            if (list.contains(keyword)) {
+                                sender.sendMessage(PREFIX + "Messages contains the keyword is already intercepted.");
+                            } else {
+                                list.add(keyword);
+                                sender.sendMessage(PREFIX + "Succeed.");
+                            }
+                        } else {
+                            if (!list.contains(keyword)) {
+                                sender.sendMessage(PREFIX + "Messages contains the keyword isn't intercepted.");
+                            } else {
+                                list.remove(keyword);
+                                sender.sendMessage(PREFIX + "Succeed.");
+                            }
+                        }
+                        config.set("interceptKeywordList", list);
+                        break;
+                    default:
+                        sender.sendMessage("Usage: /co filter <Add/Remove> <Keyword/Plugin Name/Errors> [Name]");
                 }
+                saveConfig();
+//                if (actionType.equals("ConsoleOptimizer")) {
+//                    sender.sendMessage(PREFIX + "Nope!");
+//                    break;
+//                } else {
+//                    if (!actionType.equals("errors")) {
+//                        boolean match = false;
+//                        for (Plugin plugin : getServer().getPluginManager().getPlugins()) {
+//                            if (plugin.getName().equals(actionType)) {
+//                                match = true;
+//                            }
+//                        }
+//                        if (!match) {
+//                            sender.sendMessage(PREFIX + "The plugin you have entered doesn't exists!");
+//                            break;
+//                        }
+//
+//                        List<String> list = config.getStringList("interceptPluginList");
+//                        if (action.equals("add")) {
+//                            if (list.contains(actionType)) {
+//                                sender.sendMessage(PREFIX + "The plugin's output is already intercepted.");
+//                            } else {
+//                                list.add(actionType);
+//                                sender.sendMessage(PREFIX + "Succeed.");
+//                            }
+//                        } else {
+//                            if (!list.contains(actionType)) {
+//                                sender.sendMessage(PREFIX + "The plugin's output isn't intercepted.");
+//                            } else {
+//                                list.remove(actionType);
+//                                sender.sendMessage(PREFIX + "Succeed.");
+//                            }
+//                        }
+//                        config.set("interceptPluginList", list);
+//                    } else {
+//                        config.set("interceptErrors", action.equals("add"));
+//                        if (action.equals("add")) {
+//                            interceptErrors(true);
+//                        } else {
+//                            interceptErrors(false);
+//                        }
+//                        sender.sendMessage(PREFIX + "Succeed.");
+//                    }
+//
+//                    saveConfig();
+//                }
                 break;
             case "showlog":
                 if (args.length < 2) {
                     sender.sendMessage("Usage: /co showlog <pluginName>");
                     break;
                 }
-                pluginName = args[1];
-                if (pluginLog.get(pluginName) == null) {
-                    sender.sendMessage(PREFIX + "The plugin " + pluginName + " has no log.");
+                actionType = args[1];
+                if (pluginLog.get(actionType) == null) {
+                    sender.sendMessage(PREFIX + "The plugin " + actionType + " has no log.");
                     break;
                 }
-                pluginLog.get(pluginName).forEach(sender::sendMessage);
+                pluginLog.get(actionType).forEach(sender::sendMessage);
                 break;
             case "showerrors":
                 if (errStreamBackup == null) {
