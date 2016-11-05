@@ -228,7 +228,7 @@ public class ConsoleOptimizer extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
-        getColoredLogger().sendMessage(PREFIX + "Loading ConsoleOptimizer 1.1.2...");
+        getColoredLogger().sendMessage(PREFIX + "Loading ConsoleOptimizer 1.1.3...");
         getColoredLogger().sendMessage(PREFIX + "Author: Ringwid");
         saveDefaultConfig();
         try {
@@ -275,7 +275,7 @@ public class ConsoleOptimizer extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
-        getColoredLogger().sendMessage(PREFIX + "Disabling ConsoleOptimizer 1.1.2...");
+        getColoredLogger().sendMessage(PREFIX + "Disabling ConsoleOptimizer 1.1.3...");
         if (getConfig().getBoolean("interceptErrors") || errStreamBackup != null) {
             interceptErrors(false);
         }

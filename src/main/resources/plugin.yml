@@ -1,6 +1,6 @@
 name: ConsoleOptimizer
 main: com.github.ringwid.consoleoptimizer.ConsoleOptimizer
-version: 1.1.2
+version: 1.1.3
 author: Ringwid
 commands:
   consoleoptimizer:
