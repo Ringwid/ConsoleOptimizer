@@ -2,9 +2,16 @@ package com.github.ringwid.consoleoptimizer;
 
 import org.bukkit.plugin.Plugin;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.io.Writer;
+import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 /**
  * Project ConsoleOptimizer
@@ -34,32 +41,42 @@ public class OutputFilter extends Writer {
                 if (plugin == null) {
                     continue;
                 }
-                if (element.getClassName().contains(plugin.getClass().getPackage().getName())) {
-                    if (!this.plugin.getPluginLog().containsKey(interceptPlugin)) {
-                        this.plugin.getPluginLog().put(interceptPlugin, new ArrayList<>());
+
+                try {
+                    if (findPathJar(Class.forName(element.getClassName())).equals(findPathJar(plugin.getClass()))) {
+                        if (!this.plugin.getPluginLog().containsKey(interceptPlugin)) {
+                            this.plugin.getPluginLog().put(interceptPlugin, new ArrayList<>());
+                        }
+                        this.plugin.getPluginLog().get(interceptPlugin).add(str);
+                        match = true;
+                        break plugin;
                     }
-                    this.plugin.getPluginLog().get(interceptPlugin).add(str);
-                    match = true;
-                    break plugin;
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
                 }
             }
         }
 
         for (String interceptKeyword : plugin.getConfig().getStringList("interceptKeywordList")) {
             if (str.toLowerCase().contains(interceptKeyword.toLowerCase())) {
+                keyword:
                 for (Plugin plugin1 : plugin.getServer().getPluginManager().getPlugins()) {
-                    plugin:
                     for (StackTraceElement element : elements) {
                         if (element.getClassName().contains("consoleoptimizer")) {
                             continue;
                         }
-                        if (element.getClassName().contains(plugin1.getClass().getPackage().getName())) {
-                            if (!this.plugin.getPluginLog().containsKey(plugin1.getName())) {
-                                this.plugin.getPluginLog().put(plugin1.getName(), new ArrayList<>());
+
+                        try {
+                            if (findPathJar(Class.forName(element.getClassName())).equals(findPathJar(plugin1.getClass()))) {
+                                if (!this.plugin.getPluginLog().containsKey(plugin1.getName())) {
+                                    this.plugin.getPluginLog().put(plugin1.getName(), new ArrayList<>());
+                                }
+                                this.plugin.getPluginLog().get(plugin1.getName()).add(str);
+                                match = true;
+                                break keyword;
                             }
-                            this.plugin.getPluginLog().get(plugin1.getName()).add(str);
-                            match = true;
-                            break plugin;
+                        } catch (ClassNotFoundException e) {
+                            e.printStackTrace();
                         }
                     }
                 }
@@ -89,6 +106,35 @@ public class OutputFilter extends Writer {
 
     public void close() throws IOException {
         out.close();
+    }
+
+    public static String findPathJar(Class<?> context) {
+        String rawName = context.getName();
+        String classFileName;
+    /* rawName is something like package.name.ContainingClass$ClassName. We need to turn this into ContainingClass$ClassName.class. */ {
+            int idx = rawName.lastIndexOf('.');
+            classFileName = (idx == -1 ? rawName : rawName.substring(idx+1)) + ".class";
+        }
+
+        String uri = context.getResource(classFileName).toString();
+        if (uri.startsWith("file:")) throw new IllegalStateException("This class has been loaded from a directory and not from a jar file.");
+        if (!uri.startsWith("jar:file:")) {
+            int idx = uri.indexOf(':');
+            String protocol = idx == -1 ? "(unknown)" : uri.substring(0, idx);
+            throw new IllegalStateException("This class has been loaded remotely via the " + protocol +
+                    " protocol. Only loading from a jar on the local file system is supported.");
+        }
+
+        int idx = uri.indexOf('!');
+        //As far as I know, the if statement below can't ever trigger, so it's more of a sanity check thing.
+        if (idx == -1) throw new IllegalStateException("You appear to have loaded this class from a local jar file, but I can't make sense of the URL!");
+
+        try {
+            String fileName = URLDecoder.decode(uri.substring("jar:file:".length(), idx), Charset.defaultCharset().name());
+            return new File(fileName).getAbsolutePath();
+        } catch (UnsupportedEncodingException e) {
+            throw new InternalError("default charset doesn't exist. Your VM is borked.");
+        }
     }
 
 }
