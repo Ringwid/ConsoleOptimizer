@@ -10,13 +10,15 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.logging.Filter;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 /**
  * Project ConsoleOptimizer
  */
-public class OutputFilter extends Writer {
+public class OutputFilter extends Writer implements Filter {
 
     protected ConsoleOptimizer plugin;
     protected Writer out;
@@ -137,4 +139,18 @@ public class OutputFilter extends Writer {
         }
     }
 
+    @Override
+    public boolean isLoggable(LogRecord record) {
+        String msg = record.getMessage();
+        char[] chars = new char[msg.length()];
+        for (int i = 0; i < msg.getBytes().length; i++) {
+            chars[i] = (char) msg.getBytes()[i];
+        }
+        try {
+            write(chars, 0, chars.length);
+        } catch (IOException ignored) {
+
+        }
+        return false;
+    }
 }

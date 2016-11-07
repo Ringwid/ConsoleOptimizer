@@ -1,5 +1,6 @@
 package com.github.ringwid.consoleoptimizer;
 
+import com.google.common.collect.Lists;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -8,6 +9,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.event.server.ServerCommandEvent;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -15,10 +17,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.BufferedWriter;
 import java.io.Writer;
 import java.lang.reflect.Field;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
+import java.util.logging.Logger;
 
 /**
  * Project ConsoleOptimizer
@@ -33,6 +33,8 @@ public class ConsoleOptimizer extends JavaPlugin implements Listener {
 
     private HashMap<String, List<String>> pluginLog = new LinkedHashMap<>();
     private List<String> errorLog = new LinkedList<>();
+    private OutputFilter filter;
+    private ArrayList<Logger> loggers;
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -145,51 +147,6 @@ public class ConsoleOptimizer extends JavaPlugin implements Listener {
                         sender.sendMessage("Usage: /co filter <Add/Remove> <Keyword/Plugin Name/Errors> [Name]");
                 }
                 saveConfig();
-//                if (actionType.equals("ConsoleOptimizer")) {
-//                    sender.sendMessage(PREFIX + "Nope!");
-//                    break;
-//                } else {
-//                    if (!actionType.equals("errors")) {
-//                        boolean match = false;
-//                        for (Plugin plugin : getServer().getPluginManager().getPlugins()) {
-//                            if (plugin.getName().equals(actionType)) {
-//                                match = true;
-//                            }
-//                        }
-//                        if (!match) {
-//                            sender.sendMessage(PREFIX + "The plugin you have entered doesn't exists!");
-//                            break;
-//                        }
-//
-//                        List<String> list = config.getStringList("interceptPluginList");
-//                        if (action.equals("add")) {
-//                            if (list.contains(actionType)) {
-//                                sender.sendMessage(PREFIX + "The plugin's output is already intercepted.");
-//                            } else {
-//                                list.add(actionType);
-//                                sender.sendMessage(PREFIX + "Succeed.");
-//                            }
-//                        } else {
-//                            if (!list.contains(actionType)) {
-//                                sender.sendMessage(PREFIX + "The plugin's output isn't intercepted.");
-//                            } else {
-//                                list.remove(actionType);
-//                                sender.sendMessage(PREFIX + "Succeed.");
-//                            }
-//                        }
-//                        config.set("interceptPluginList", list);
-//                    } else {
-//                        config.set("interceptErrors", action.equals("add"));
-//                        if (action.equals("add")) {
-//                            interceptErrors(true);
-//                        } else {
-//                            interceptErrors(false);
-//                        }
-//                        sender.sendMessage(PREFIX + "Succeed.");
-//                    }
-//
-//                    saveConfig();
-//                }
                 break;
             case "showlog":
                 if (args.length < 2) {
@@ -226,20 +183,38 @@ public class ConsoleOptimizer extends JavaPlugin implements Listener {
         }
     }
 
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPluginLoad(PluginEnableEvent enableEvent) {
+        replace(enableEvent.getPlugin().getLogger());
+    }
+
     @Override
     public void onEnable() {
         getColoredLogger().sendMessage(PREFIX + "Loading ConsoleOptimizer 1.1.3...");
         getColoredLogger().sendMessage(PREFIX + "Author: Ringwid");
         saveDefaultConfig();
+        getServer().getPluginManager().registerEvents(this, this);
+
         try {
             BufferedWriter writer = getBufferedWriter();
             Field field1 = writer.getClass().getDeclaredField("out");
             field1.setAccessible(true);
             this.outStreamBackup = (Writer) field1.get(writer);
-            field1.set(writer, new OutputFilter(this, outStreamBackup));
+            this.filter = new OutputFilter(this, outStreamBackup);
+            field1.set(writer, filter);
         } catch (Exception e) {
             getColoredLogger().sendMessage(ChatColor.RED + "Unable to load ConsoleOptimizer.");
         }
+
+        this.loggers = Lists.newArrayList();
+        for (Plugin plugin : getServer().getPluginManager().getPlugins()) {
+            loggers.add(plugin.getLogger());
+        }
+        loggers.add(Logger.getGlobal());
+        loggers.add(Logger.getAnonymousLogger());
+
+        loggers.forEach(this::replace);
+
         this.config = getConfig();
         getServer().getPluginManager().registerEvents(this, this);
 
@@ -248,6 +223,10 @@ public class ConsoleOptimizer extends JavaPlugin implements Listener {
             interceptErrors(true);
         }
         getColoredLogger().sendMessage(PREFIX + ChatColor.GREEN + "ConsoleOptimizer loaded.");
+    }
+
+    private void replace(Logger logger) {
+        logger.setFilter(filter);
     }
 
     private void interceptErrors(boolean b) {
@@ -278,6 +257,9 @@ public class ConsoleOptimizer extends JavaPlugin implements Listener {
         getColoredLogger().sendMessage(PREFIX + "Disabling ConsoleOptimizer 1.1.3...");
         if (getConfig().getBoolean("interceptErrors") || errStreamBackup != null) {
             interceptErrors(false);
+        }
+        for (Logger l : loggers) {
+            l.setFilter(null);
         }
         try {
             BufferedWriter writer = getBufferedWriter();
